@@ -1,0 +1,11 @@
+{
+  "python.defaultInterpreterPath": "${env:HOME}/.venvs/tracepince/bin/python",
+  "terminal.integrated.profiles.linux": {
+    "TracePince Toolbox": {
+      "path": "toolbox",
+      "args": ["enter", "tracepince"]
+    }
+  },
+  "terminal.integrated.defaultProfile.linux": "TracePince Toolbox"
+}
+

@@ -1,0 +1,111 @@
+Serial port COM5 opened
+
+******  HARMONIC & POWER  METER  ******
+* NAME:              SITE:
+* TIME:              DATE:
+*
+* VOLTAGE    AC+DC                
+*                    SCAN: 01 mn  (005)
+***************************************
+  ELAPSED TIME: 00:00
+ RMS    (V) =   1.43
+ Peak+  (V) = + 1.46
+ Peak-  (V) = + 1.40
+ CF         =   1.02
+ DC     (V) = + 1.43
+ Freq ( Hz) =   0.00
+
+  ELAPSED TIME: 00:01
+ RMS    (V) =   1.43
+ Peak+  (V) = + 1.46
+ Peak-  (V) = + 1.40
+ CF         =   1.02
+ DC     (V) = + 1.43
+ Freq ( Hz) =   0.00
+
+  ELAPSED TIME: 00:02
+ RMS    (V) =   1.43
+ Peak+  (V) = + 1.46
+ Peak-  (V) = + 1.40
+ CF         =   1.02
+ DC     (V) = + 1.43
+ Freq ( Hz) =   0.00
+
+  ELAPSED TIME: 00:03
+ RMS    (V) =   1.43
+ Peak+  (V) = + 1.46
+ Peak-  (V) = + 1.40
+ CF         =   1.02
+ DC     (V) = + 1.43
+ Freq ( Hz) =   0.00
+
+  ELAPSED TIME: 00:04
+ RMS    (V) =   1.43
+ Peak+  (V) = + 1.46
+ Peak-  (V) = + 1.40
+ CF         =   1.02
+ DC     (V) = + 1.43
+ Freq ( Hz) =   0.00
+
+  ELAPSED TIME: 00:05
+ RMS    (V) =   1.43
+ Peak+  (V) = + 1.46
+ Peak-  (V) = + 1.40
+ CF         =   1.02
+ DC     (V) = + 1.43
+ Freq ( Hz) =   0.00
+
+Serial port COM5 closed
+Serial port COM5 opened
+
+******  HARMONIC & POWER  METER  ******
+* NAME:              SITE:
+* TIME:              DATE:
+*
+* CURRENT       DC                
+*                    SCAN: 01 mn  (002)
+***************************************
+  ELAPSED TIME: 00:00
+ DC     (A) = + 2.08
+ Peak+  (A) = + 2.27
+ Peak-  (A) = + 1.86
+ Ripple (%) =   19.8
+ Freq ( Hz) =   0.00
+
+  ELAPSED TIME: 00:01
+ DC     (A) = + 2.11
+ Peak+  (A) = + 2.32
+ Peak-  (A) = + 1.89
+ Ripple (%) =   20.3
+ Freq ( Hz) =   0.00
+
+  ELAPSED TIME: 00:02
+ DC     (A) = + 2.14
+ Peak+  (A) = + 2.34
+ Peak-  (A) = + 1.95
+ Ripple (%) =   18.1
+ Freq ( Hz) =   0.00
+
+Serial port COM5 closed
+Serial port COM5 opened
+
+******  HARMONIC & POWER  METER  ******
+* NAME:              SITE:
+* TIME:              DATE:
+*
+* POWER-1Ph     DC                
+*                    SCAN: 01 mn  (045)
+***************************************
+  ELAPSED TIME: 00:00
+ P     ( W) = +  2.9
+ A      (A) = + 2.11
+ V      (V) = + 1.42
+ Freq ( Hz) =   0.00
+
+  ELAPSED TIME: 00:01
+ P     ( W) = +  3.0
+ A      (A) = + 2.15
+ V      (V) = + 1.42
+ Freq ( Hz) =   0.00
+
+Serial port COM5 closed
