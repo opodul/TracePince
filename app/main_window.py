@@ -126,6 +126,9 @@ class MainWindow:
                     self.disconnect()
         except queue.Empty:
             pass
+        idle_measurement = self.parser.flush_if_idle()
+        if idle_measurement is not None:
+            self._show_measurement(idle_measurement)
         self.root.after(50, self._poll_events)
 
     def _show_measurement(self, measurement) -> None:

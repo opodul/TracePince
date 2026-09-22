@@ -512,6 +512,10 @@ Freq ( Hz) =   0.00
 
 Le parser doit générer une seule mesure à partir de ce bloc.
 
+Après réception d'une ligne complète, si aucune nouvelle ligne n'arrive
+pendant 500 ms, le bloc courant est finalisé automatiquement. L'interface
+n'attend donc pas le début du bloc suivant pour afficher la mesure précédente.
+
 ## 18. Données brutes et données parsées
 
 Il est essentiel de conserver deux niveaux de données.

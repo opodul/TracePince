@@ -1,6 +1,7 @@
 """Parser for Chauvin Arnoux Harmonic & Power Meter text frames."""
 
 import re
+import time
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -21,6 +22,7 @@ class ProtocolParser:
         self._current_lines: List[str] = []
         self._current_elapsed: Optional[str] = None
         self._line_buffer = ""
+        self._last_complete_line_at: Optional[float] = None
 
     @property
     def mode(self) -> str:
@@ -35,6 +37,7 @@ class ProtocolParser:
         if lines and not lines[-1].endswith(("\n", "\r")):
             self._line_buffer = lines.pop()
         for line in lines:
+            self._last_complete_line_at = time.monotonic()
             elapsed_match = self._elapsed_re.match(line.rstrip("\r\n"))
             if elapsed_match:
                 measurement = self._finish_block()
@@ -56,6 +59,16 @@ class ProtocolParser:
         """Finish the currently buffered block, if it has one."""
         return self._finish_block()
 
+    def flush_if_idle(self, timeout: float = 0.5) -> Optional[Measurement]:
+        """Finish a block after ``timeout`` seconds without a complete line."""
+        if (
+            self._current_elapsed is not None
+            and self._last_complete_line_at is not None
+            and time.monotonic() - self._last_complete_line_at >= timeout
+        ):
+            return self._finish_block()
+        return None
+
     def _finish_block(self) -> Optional[Measurement]:
         if self._current_elapsed is None:
             return None
@@ -64,6 +77,7 @@ class ProtocolParser:
         elapsed_time = self._current_elapsed
         self._current_elapsed = None
         self._current_lines = []
+        self._last_complete_line_at = None
         values = self._parse_values(raw_block)
         return Measurement(
             timestamp=datetime.now(),

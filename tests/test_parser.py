@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from app.protocol_parser import ProtocolParser, parse_text
@@ -57,6 +58,15 @@ class ProtocolParserTests(unittest.TestCase):
         measurement = parse_text(text)[0]
         self.assertEqual(measurement.mode, "CUSTOM_MODE_DC")
         self.assertEqual(measurement.values, {"Reading (unit)": 4.2})
+
+    def test_idle_block_flushes_after_timeout(self):
+        parser = ProtocolParser()
+        with patch("app.protocol_parser.time.monotonic", side_effect=(10.0, 10.0, 10.0, 10.0, 10.6)):
+            parser.feed("* CURRENT DC\nELAPSED TIME: 00:00\nDC (A) = + 2.08\n")
+            self.assertIsNone(parser.flush_if_idle(timeout=0.5))
+            measurement = parser.flush_if_idle(timeout=0.5)
+        self.assertIsNotNone(measurement)
+        self.assertEqual(measurement.current, 2.08)
 
 
 if __name__ == "__main__":
