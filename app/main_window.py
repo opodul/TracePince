@@ -1,6 +1,7 @@
 import csv
 import queue
 import tkinter as tk
+import webbrowser
 from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -57,26 +58,32 @@ class MainWindow:
 
         body = ttk.PanedWindow(self.root, orient="vertical")
         body.pack(fill="both", expand=True, padx=8, pady=(0, 8))
-        top = ttk.Frame(body)
-        bottom = ttk.Frame(body)
-        body.add(top, weight=3)
-        body.add(bottom, weight=2)
-        self.table = ttk.Treeview(top, columns=(), show="headings", height=10)
-        self.table.pack(fill="both", expand=True)
-        self.column_controls = ttk.Frame(top)
-        self.column_controls.pack(fill="x")
-        plot_frame = ttk.Frame(top)
-        plot_frame.pack(fill="both", expand=True)
+        table_frame = ttk.Frame(body)
+        plot_frame = ttk.Frame(body)
+        log_frame = ttk.Frame(body)
+        body.add(table_frame, weight=1)
+        body.add(plot_frame, weight=1)
+        body.add(log_frame, weight=1)
+
+        table_frame.columnconfigure(0, weight=1)
+        table_frame.rowconfigure(0, weight=1)
+        self.table = ttk.Treeview(table_frame, columns=(), show="headings", height=5)
+        table_scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.table.yview)
+        self.table.configure(yscrollcommand=table_scrollbar.set)
+        self.table.grid(row=0, column=0, sticky="nsew")
+        table_scrollbar.grid(row=0, column=1, sticky="ns")
+        self.column_controls = ttk.Frame(table_frame)
+        self.column_controls.grid(row=1, column=0, columnspan=2, sticky="ew")
         self.plot = PlotManager(plot_frame)
 
-        console_controls = ttk.Frame(bottom)
+        console_controls = ttk.Frame(log_frame)
         console_controls.pack(fill="x")
         ttk.Button(console_controls, text="Clear table", command=self.clear_table).pack(side="right", padx=8)
         ttk.Button(console_controls, text="Export CSV", command=self.export_csv).pack(side="right", padx=8)
         ttk.Button(console_controls, text="Export graph PDF", command=self.export_graph).pack(side="right", padx=8)
         ttk.Button(console_controls, text="Clear console", command=lambda: self.console.delete("1.0", "end")).pack(side="right")
         ttk.Button(console_controls, text="Inject log", command=self.inject_log).pack(side="right", padx=8)
-        self.console = tk.Text(bottom, height=8, wrap="none", state="disabled")
+        self.console = tk.Text(log_frame, height=5, wrap="none", state="disabled")
         self.console.pack(fill="both", expand=True)
 
     def refresh_ports(self) -> None:
@@ -185,7 +192,10 @@ class MainWindow:
         if not path:
             return
         try:
+            self.plot.update(self.data.measurements, self._selected_columns())
             self.plot.save(path)
+            if Path(path).suffix.lower() == ".pdf":
+                webbrowser.open(Path(path).resolve().as_uri())
             self.status.configure(text=f"Graph exported - {Path(path).name}")
         except OSError as error:
             messagebox.showerror("Graph export error", str(error))
