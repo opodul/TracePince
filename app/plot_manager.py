@@ -45,7 +45,13 @@ class PlotManager:
             values = [(index, item.values.get(name)) for index, item in zip(x, points)]
             values = [(index, value) for index, value in values if value is not None]
             if values:
-                axis.plot([item[0] for item in values], [item[1] for item in values], color="#d65a31")
+                axis.plot(
+                    [item[0] for item in values],
+                    [item[1] for item in values],
+                    color="#d65a31",
+                    marker="x",
+                    markersize=5,
+                )
         if self.axes:
             self.axes[-1].set_xlabel("Measurement index")
         self.canvas.draw_idle()
