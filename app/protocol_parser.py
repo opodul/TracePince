@@ -2,7 +2,7 @@
 
 import re
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from .measurement import Measurement
 
@@ -11,8 +11,10 @@ class ProtocolParser:
     """Incrementally parse newline-delimited measurement blocks."""
 
     _elapsed_re = re.compile(r"^\s*ELAPSED\s+TIME\s*:\s*(\d{1,2}:\d{2})\s*$", re.I)
-    _mode_re = re.compile(r"^\s*\*\s*(VOLTAGE|CURRENT|POWER-1PH)\b", re.I)
+    _mode_re = re.compile(r"^\s*\*\s*([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*)\b", re.I)
     _value_re = r"[+-]?\s*(?:\d+(?:\.\d*)?|\.\d+)"
+    _line_value_re = re.compile(r"^\s*(.*?)\s*=\s*(" + _value_re + r")\s*$", re.M)
+    _ignored_modes = {"NAME", "TIME", "SCAN"}
 
     def __init__(self) -> None:
         self._mode = "UNKNOWN"
@@ -43,7 +45,7 @@ class ProtocolParser:
                 continue
 
             mode_match = self._mode_re.match(line.rstrip("\r\n"))
-            if mode_match:
+            if mode_match and mode_match.group(1).upper() not in self._ignored_modes:
                 self._mode = mode_match.group(1).upper()
 
             if self._current_elapsed is not None:
@@ -68,42 +70,40 @@ class ProtocolParser:
             elapsed_time=elapsed_time,
             mode=self._mode,
             raw_block=raw_block,
-            **values,
+            values=values,
+            **self._known_values(values),
         )
 
-    def _parse_values(self, block: str) -> dict:
-        def value(pattern: str) -> Optional[float]:
-            match = re.search(pattern, block, re.I | re.M)
-            if not match:
-                return None
-            return float(match.group(1).replace(" ", ""))
+    @staticmethod
+    def _normalize_label(label: str) -> str:
+        label = " ".join(label.split())
+        match = re.match(r"^(.*?)\s*\(\s*([^()]*)\s*\)$", label)
+        if match:
+            return f"{match.group(1).strip()} ({match.group(2).strip()})"
+        return label.strip()
 
-        if self._mode == "VOLTAGE":
-            return {
-                "voltage_rms": value(r"^\s*RMS\s*\(\s*V\s*\)\s*=\s*(" + self._value_re + r")"),
-                "voltage": value(r"^\s*RMS\s*\(\s*V\s*\)\s*=\s*(" + self._value_re + r")"),
-                "voltage_peak_positive": value(r"^\s*Peak\+\s*\(\s*V\s*\)\s*=\s*(" + self._value_re + r")"),
-                "voltage_peak_negative": value(r"^\s*Peak-\s*\(\s*V\s*\)\s*=\s*(" + self._value_re + r")"),
-                "crest_factor": value(r"^\s*CF\s*=\s*(" + self._value_re + r")"),
-                "voltage_dc": value(r"^\s*DC\s*\(\s*V\s*\)\s*=\s*(" + self._value_re + r")"),
-                "frequency": value(r"^\s*Freq\s*\(\s*Hz\s*\)\s*=\s*(" + self._value_re + r")"),
-            }
-        if self._mode == "CURRENT":
-            return {
-                "current": value(r"^\s*DC\s*\(\s*A\s*\)\s*=\s*(" + self._value_re + r")"),
-                "current_peak_positive": value(r"^\s*Peak\+\s*\(\s*A\s*\)\s*=\s*(" + self._value_re + r")"),
-                "current_peak_negative": value(r"^\s*Peak-\s*\(\s*A\s*\)\s*=\s*(" + self._value_re + r")"),
-                "ripple": value(r"^\s*Ripple\s*\(\s*%\s*\)\s*=\s*(" + self._value_re + r")"),
-                "frequency": value(r"^\s*Freq\s*\(\s*Hz\s*\)\s*=\s*(" + self._value_re + r")"),
-            }
-        if self._mode == "POWER-1PH":
-            return {
-                "power": value(r"^\s*P\s*\(\s*W\s*\)\s*=\s*(" + self._value_re + r")"),
-                "current": value(r"^\s*A\s*\(\s*A\s*\)\s*=\s*(" + self._value_re + r")"),
-                "voltage": value(r"^\s*V\s*\(\s*V\s*\)\s*=\s*(" + self._value_re + r")"),
-                "frequency": value(r"^\s*Freq\s*\(\s*Hz\s*\)\s*=\s*(" + self._value_re + r")"),
-            }
-        return {}
+    def _parse_values(self, block: str) -> Dict[str, float]:
+        values: Dict[str, float] = {}
+        for match in self._line_value_re.finditer(block):
+            label = self._normalize_label(match.group(1))
+            if label:
+                values[label] = float(match.group(2).replace(" ", ""))
+        return values
+
+    @staticmethod
+    def _known_values(values: Dict[str, float]) -> dict:
+        def value(pattern: str) -> Optional[float]:
+            return values.get(pattern)
+
+        return {
+            "voltage_rms": value("RMS (V)"), "voltage": value("RMS (V)") or value("V (V)"),
+            "voltage_peak_positive": value("Peak+ (V)"), "voltage_peak_negative": value("Peak- (V)"),
+            "crest_factor": value("CF"), "voltage_dc": value("DC (V)"),
+            "current": value("DC (A)") or value("A (A)"),
+            "current_peak_positive": value("Peak+ (A)"), "current_peak_negative": value("Peak- (A)"),
+            "ripple": value("Ripple (%)"), "power": value("P (W)"),
+            "frequency": value("Freq (Hz)"),
+        }
 
 
 def parse_text(text: str) -> List[Measurement]:

@@ -319,6 +319,56 @@ Lorsque le mode `POWER-1Ph` est utilisé, afficher également :
 
 `Power (W) / temps`
 
+## 12. Schéma générique des blocs
+
+Le logiciel ne doit pas limiter le protocole à `VOLTAGE`, `CURRENT` et
+`POWER-1Ph`. Le mode est détecté depuis l'en-tête du bloc, mais un mode
+inconnu doit être accepté.
+
+Chaque ligne numérique d'un bloc devient une valeur dont le nom est le
+libellé reçu, nettoyé des espaces superflus. Par exemple :
+
+- `DC     (A)` devient `DC (A)` ;
+- `Freq ( Hz)` devient `Freq (Hz)` ;
+- `CF` reste `CF`.
+
+La mesure conserve donc un dictionnaire `values` contenant toutes les
+colonnes du bloc, y compris celles que le programme ne connaît pas encore.
+Les attributs historiques (`current`, `voltage`, `power`, etc.) peuvent être
+alimentés lorsqu'un libellé connu est rencontré, mais ne doivent pas limiter
+le tableau.
+
+## 13. Tableau et changement de mode
+
+Le tableau est construit à partir des colonnes des blocs reçus, et non d'une
+liste fixe de grandeurs. Les colonnes de contexte sont `Timestamp`, `Mode` et
+`Elapsed`, puis viennent les libellés numériques du bloc.
+
+Lorsqu'un nouveau mode est détecté, les mesures en mémoire et les lignes du
+tableau sont effacées. Le nouveau schéma est alors construit à partir du
+premier bloc de ce mode. Les valeurs absentes d'un bloc sont affichées par
+`-` et restent `None` dans le modèle lorsque le champ n'est pas présent.
+
+Chaque colonne numérique dispose d'une case à cocher. Une colonne cochée est
+tracée ; les changements de sélection mettent à jour le graphique sans
+modifier les données reçues.
+
+## 14. Graphiques génériques
+
+Un axe est créé pour chaque colonne sélectionnée. Tous les axes utilisent le
+même axe X et les mêmes indices de mesure, afin que les courbes restent
+parfaitement synchronisées même si une colonne est absente de certains blocs.
+L'axe X représente l'ordre des blocs reçus ; `elapsed_time` reste affiché et
+conservé dans le tableau.
+
+## 15. Injection d'un log enregistré
+
+L'interface fournit une commande `Inject log` permettant de choisir un fichier
+texte ou `.log`. Le contenu est envoyé au même parser incrémental que les
+données série, puis affiché dans le tableau et les graphiques. L'injection
+réinitialise le parser courant et n'écrase pas les fichiers bruts enregistrés
+par une session série.
+
 La puissance doit pouvoir être activée/désactivée dans l'interface.
 
 ## 12. Console série

@@ -45,6 +45,19 @@ class ProtocolParserTests(unittest.TestCase):
         self.assertIsNotNone(measurement)
         self.assertEqual(measurement.current, 2.08)
 
+    def test_acdc_log_keeps_received_columns(self):
+        text = Path(__file__).parents[1].joinpath("logs/examples/CURRENT_ACDC.log").read_text()
+        measurements = parse_text(text)
+        self.assertEqual(len(measurements), 3)
+        self.assertEqual(list(measurements[0].values), ["RMS (A)", "Peak+ (A)", "Peak- (A)", "CF", "DC (A)", "Freq (Hz)", "THDF"])
+        self.assertEqual(measurements[0].values["DC (A)"], -2.12)
+
+    def test_unknown_mode_and_field_are_generic(self):
+        text = "* CUSTOM-MODE DC\nELAPSED TIME: 00:00\nReading (unit) = + 4.2\n"
+        measurement = parse_text(text)[0]
+        self.assertEqual(measurement.mode, "CUSTOM-MODE")
+        self.assertEqual(measurement.values, {"Reading (unit)": 4.2})
+
 
 if __name__ == "__main__":
     unittest.main()

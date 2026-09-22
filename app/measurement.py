@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Dict, Optional
 
 
 @dataclass(frozen=True)
@@ -23,3 +23,8 @@ class Measurement:
     current_peak_negative: Optional[float] = None
     ripple: Optional[float] = None
     raw_block: str = ""
+    values: Dict[str, float] = None
+
+    def __post_init__(self) -> None:
+        if self.values is None:
+            object.__setattr__(self, "values", {})
