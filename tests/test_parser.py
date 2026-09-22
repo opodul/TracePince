@@ -11,7 +11,7 @@ class ProtocolParserTests(unittest.TestCase):
 
     def test_sample_contains_all_modes(self):
         measurements = parse_text(self.sample)
-        self.assertEqual([item.mode for item in measurements], ["VOLTAGE"] * 5 + ["CURRENT"] * 3 + ["POWER-1PH"] * 3)
+        self.assertEqual([item.mode for item in measurements], ["VOLTAGE_ACDC"] * 5 + ["CURRENT_DC"] * 3 + ["POWER_1PH_DC"] * 3)
         self.assertEqual(measurements[0].voltage, 1.43)
         self.assertIsNone(measurements[0].current)
         self.assertEqual(measurements[6].current, 2.08)
@@ -55,7 +55,7 @@ class ProtocolParserTests(unittest.TestCase):
     def test_unknown_mode_and_field_are_generic(self):
         text = "* CUSTOM-MODE DC\nELAPSED TIME: 00:00\nReading (unit) = + 4.2\n"
         measurement = parse_text(text)[0]
-        self.assertEqual(measurement.mode, "CUSTOM-MODE")
+        self.assertEqual(measurement.mode, "CUSTOM_MODE_DC")
         self.assertEqual(measurement.values, {"Reading (unit)": 4.2})
 
 

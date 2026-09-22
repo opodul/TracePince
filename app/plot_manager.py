@@ -49,3 +49,7 @@ class PlotManager:
         if self.axes:
             self.axes[-1].set_xlabel("Measurement index")
         self.canvas.draw_idle()
+
+    def save(self, path: str) -> None:
+        """Save the current graph in a format suitable for printing."""
+        self.figure.savefig(path, bbox_inches="tight")

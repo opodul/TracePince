@@ -32,6 +32,9 @@ La communication série doit utiliser Python, idéalement avec la bibliothèque 
 
 `pyserial`
 
+Les paramètres initiaux de l'interface sont `19200` bauds avec `RTS/CTS`
+activé. Ils restent modifiables avant la connexion.
+
 ### Gestion de la connexion
 
 L'interface doit fournir :
@@ -102,7 +105,7 @@ Chaque bloc commence par :
 
 puis contient différentes mesures.
 
-## 5. Mode VOLTAGE
+## 5. Mode VOLTAGE_ACDC
 
 Exemple observé :
 
@@ -118,7 +121,7 @@ Exemple observé :
 
 Le parser doit reconnaître le mode :
 
-`VOLTAGE`
+`VOLTAGE_ACDC`
 
 et extraire au minimum :
 
@@ -136,7 +139,7 @@ Le champ principal destiné au graphique de tension est :
 
 `RMS (V)`
 
-## 6. Mode CURRENT
+## 6. Mode CURRENT_DC
 
 Exemple observé :
 
@@ -151,7 +154,7 @@ Exemple observé :
 
 Le parser doit reconnaître le mode :
 
-`CURRENT`
+`CURRENT_DC`
 
 et extraire au minimum :
 
@@ -168,7 +171,7 @@ Le champ principal destiné au graphique de courant est :
 
 `DC (A)`
 
-## 7. Mode POWER-1Ph
+## 7. Mode POWER_1PH_DC
 
 Exemple observé :
 
@@ -182,7 +185,7 @@ Exemple observé :
 
 Le parser doit reconnaître le mode :
 
-`POWER-1Ph`
+`POWER_1PH_DC`
 
 et extraire :
 
@@ -219,13 +222,13 @@ Measurement(
 )
 ```
 
-Pour le mode `POWER-1Ph` :
+Pour le mode `POWER_1PH_DC` :
 
 ```python
 Measurement(
     timestamp=...,
     elapsed_time="00:01",
-    mode="POWER-1Ph",
+        mode="POWER_1PH_DC",
     current=2.15,
     voltage=1.42,
     power=3.0,
@@ -277,7 +280,7 @@ Exemple :
 | 14:32:16 | VOLTAGE | — | 1.43 | — | 0.00 |
 | 14:33:01 | CURRENT | 2.08 | — | — | 0.00 |
 | 14:33:02 | CURRENT | 2.11 | — | — | 0.00 |
-| 14:34:10 | POWER-1Ph | 2.11 | 1.42 | 2.9 | 0.00 |
+| 14:34:10 | POWER_1PH_DC | 2.11 | 1.42 | 2.9 | 0.00 |
 
 Les valeurs non disponibles doivent être affichées avec `—`.
 
@@ -291,11 +294,11 @@ Tracer :
 
 `Current (A) / temps`
 
-Pour le mode `CURRENT` :
+Pour le mode `CURRENT_DC` :
 
 `DC (A)`
 
-Pour le mode `POWER-1Ph` :
+Pour le mode `POWER_1PH_DC` :
 
 `A (A)`
 
@@ -305,24 +308,24 @@ Tracer :
 
 `Voltage (V) / temps`
 
-Pour le mode `VOLTAGE` :
+Pour le mode `VOLTAGE_ACDC` :
 
 `RMS (V)`
 
-Pour le mode `POWER-1Ph` :
+Pour le mode `POWER_1PH_DC` :
 
 `V (V)`
 
 ### Graphique puissance
 
-Lorsque le mode `POWER-1Ph` est utilisé, afficher également :
+Lorsque le mode `POWER_1PH_DC` est utilisé, afficher également :
 
 `Power (W) / temps`
 
 ## 12. Schéma générique des blocs
 
-Le logiciel ne doit pas limiter le protocole à `VOLTAGE`, `CURRENT` et
-`POWER-1Ph`. Le mode est détecté depuis l'en-tête du bloc, mais un mode
+Le logiciel ne doit pas limiter le protocole à `VOLTAGE_ACDC`, `CURRENT_DC` et
+`POWER_1PH_DC`. Le mode est détecté depuis l'en-tête du bloc, mais un mode
 inconnu doit être accepté.
 
 Chaque ligne numérique d'un bloc devient une valeur dont le nom est le
@@ -349,9 +352,17 @@ tableau sont effacées. Le nouveau schéma est alors construit à partir du
 premier bloc de ce mode. Les valeurs absentes d'un bloc sont affichées par
 `-` et restent `None` dans le modèle lorsque le champ n'est pas présent.
 
+Un bouton `Clear table` permet de vider manuellement les mesures, les lignes
+du tableau et les courbes, sans interrompre la connexion série.
+
 Chaque colonne numérique dispose d'une case à cocher. Une colonne cochée est
 tracée ; les changements de sélection mettent à jour le graphique sans
 modifier les données reçues.
+
+Le tableau peut être exporté avec la commande `Export CSV`. Le fichier est
+encodé en UTF-8 avec marqueur BOM et utilise le séparateur `;`, afin de
+s'ouvrir directement dans LibreOffice Calc. Il contient les colonnes
+`Timestamp`, `Mode`, `Elapsed` et toutes les colonnes numériques reçues.
 
 ## 14. Graphiques génériques
 
@@ -360,6 +371,9 @@ même axe X et les mêmes indices de mesure, afin que les courbes restent
 parfaitement synchronisées même si une colonne est absente de certains blocs.
 L'axe X représente l'ordre des blocs reçus ; `elapsed_time` reste affiché et
 conservé dans le tableau.
+
+Le graphique courant peut être exporté avec la commande `Export graph PDF`.
+Le PDF est adapté à l'impression ; un export PNG est également proposé.
 
 ## 15. Injection d'un log enregistré
 
@@ -457,9 +471,9 @@ Le parser doit fonctionner par blocs de mesure.
 
 Il doit identifier automatiquement le mode à partir de l'en-tête :
 
-- `VOLTAGE`
-- `CURRENT`
-- `POWER-1Ph`
+- `VOLTAGE_ACDC`
+- `CURRENT_DC`
+- `POWER_1PH_DC`
 
 Il doit ensuite reconnaître les lignes de mesures correspondantes.
 
@@ -536,9 +550,9 @@ Créer des tests unitaires à partir des traces réelles fournies.
 
 Le parser doit notamment être testé avec :
 
-- Un bloc `VOLTAGE`.
-- Un bloc `CURRENT`.
-- Un bloc `POWER-1Ph`.
+- Un bloc `VOLTAGE_ACDC`.
+- Un bloc `CURRENT_DC`.
+- Un bloc `POWER_1PH_DC`.
 - Plusieurs blocs successifs.
 - Des espaces différents.
 - Des valeurs positives et négatives.
@@ -584,7 +598,7 @@ Serial port COM5 closed
 Serial port COM5 opened
         │
         ▼
-POWER-1Ph
+POWER_1PH_DC
         │
         ├── 00:00
         └── 00:01

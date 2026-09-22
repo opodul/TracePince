@@ -11,7 +11,7 @@ class ProtocolParser:
     """Incrementally parse newline-delimited measurement blocks."""
 
     _elapsed_re = re.compile(r"^\s*ELAPSED\s+TIME\s*:\s*(\d{1,2}:\d{2})\s*$", re.I)
-    _mode_re = re.compile(r"^\s*\*\s*([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*)\b", re.I)
+    _mode_re = re.compile(r"^\s*\*\s*([A-Z][A-Z0-9+-]*)\s+([A-Z][A-Z0-9+-]*)\b", re.I)
     _value_re = r"[+-]?\s*(?:\d+(?:\.\d*)?|\.\d+)"
     _line_value_re = re.compile(r"^\s*(.*?)\s*=\s*(" + _value_re + r")\s*$", re.M)
     _ignored_modes = {"NAME", "TIME", "SCAN"}
@@ -46,7 +46,7 @@ class ProtocolParser:
 
             mode_match = self._mode_re.match(line.rstrip("\r\n"))
             if mode_match and mode_match.group(1).upper() not in self._ignored_modes:
-                self._mode = mode_match.group(1).upper()
+                self._mode = self._normalize_mode(mode_match.group(1), mode_match.group(2))
 
             if self._current_elapsed is not None:
                 self._current_lines.append(line)
@@ -73,6 +73,12 @@ class ProtocolParser:
             values=values,
             **self._known_values(values),
         )
+
+    @staticmethod
+    def _normalize_mode(measurement_type: str, coupling: str) -> str:
+        measurement_type = re.sub(r"[^A-Za-z0-9]+", "_", measurement_type).strip("_").upper()
+        coupling = re.sub(r"[^A-Za-z0-9]+", "", coupling).upper()
+        return f"{measurement_type}_{coupling}"
 
     @staticmethod
     def _normalize_label(label: str) -> str:

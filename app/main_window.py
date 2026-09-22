@@ -1,3 +1,4 @@
+import csv
 import queue
 import tkinter as tk
 from datetime import datetime
@@ -36,7 +37,7 @@ class MainWindow:
         self.port.grid(row=0, column=0, padx=3)
         ttk.Button(controls, text="Refresh", command=self.refresh_ports).grid(row=0, column=1, padx=3)
         self.baud = ttk.Combobox(controls, values=("1200", "2400", "4800", "9600", "19200", "38400", "115200"), width=8)
-        self.baud.set("9600")
+        self.baud.set("19200")
         self.baud.grid(row=0, column=2, padx=3)
         self.parity = ttk.Combobox(controls, values=("None", "Even", "Odd", "Mark", "Space"), width=8)
         self.parity.set("None")
@@ -47,7 +48,7 @@ class MainWindow:
         self.stopbits = ttk.Combobox(controls, values=("1", "1.5", "2"), width=4)
         self.stopbits.set("1")
         self.stopbits.grid(row=0, column=5, padx=3)
-        self.rtscts = tk.BooleanVar(value=False)
+        self.rtscts = tk.BooleanVar(value=True)
         ttk.Checkbutton(controls, text="RTS/CTS", variable=self.rtscts).grid(row=0, column=6, padx=3)
         ttk.Button(controls, text="Connect", command=self.connect).grid(row=0, column=7, padx=3)
         ttk.Button(controls, text="Disconnect", command=self.disconnect).grid(row=0, column=8, padx=3)
@@ -70,6 +71,9 @@ class MainWindow:
 
         console_controls = ttk.Frame(bottom)
         console_controls.pack(fill="x")
+        ttk.Button(console_controls, text="Clear table", command=self.clear_table).pack(side="right", padx=8)
+        ttk.Button(console_controls, text="Export CSV", command=self.export_csv).pack(side="right", padx=8)
+        ttk.Button(console_controls, text="Export graph PDF", command=self.export_graph).pack(side="right", padx=8)
         ttk.Button(console_controls, text="Clear console", command=lambda: self.console.delete("1.0", "end")).pack(side="right")
         ttk.Button(console_controls, text="Inject log", command=self.inject_log).pack(side="right", padx=8)
         self.console = tk.Text(bottom, height=8, wrap="none", state="disabled")
@@ -144,6 +148,44 @@ class MainWindow:
             child.destroy()
         self.column_vars = {}
         self.plot.set_columns([])
+
+    def clear_table(self) -> None:
+        """Clear the displayed measurements and reset the dynamic schema."""
+        self._reset_measurements(None)
+
+    def export_csv(self) -> None:
+        path = filedialog.asksaveasfilename(
+            title="Export table as CSV",
+            defaultextension=".csv",
+            filetypes=(("CSV files", "*.csv"), ("All files", "*.*")),
+        )
+        if not path:
+            return
+        try:
+            with open(path, "w", newline="", encoding="utf-8-sig") as output:
+                writer = csv.writer(output, delimiter=";")
+                columns = ("Timestamp", "Mode", "Elapsed", *self.columns)
+                writer.writerow(columns)
+                for item in self.data.measurements:
+                    row = (item.timestamp.isoformat(timespec="milliseconds"), item.mode, item.elapsed_time)
+                    writer.writerow(row + tuple(item.values.get(name, "") for name in self.columns))
+            self.status.configure(text=f"CSV exported - {Path(path).name}")
+        except OSError as error:
+            messagebox.showerror("CSV export error", str(error))
+
+    def export_graph(self) -> None:
+        path = filedialog.asksaveasfilename(
+            title="Export graph as PDF",
+            defaultextension=".pdf",
+            filetypes=(("PDF files", "*.pdf"), ("PNG files", "*.png"), ("All files", "*.*")),
+        )
+        if not path:
+            return
+        try:
+            self.plot.save(path)
+            self.status.configure(text=f"Graph exported - {Path(path).name}")
+        except OSError as error:
+            messagebox.showerror("Graph export error", str(error))
 
     def _configure_columns(self) -> None:
         old_selection = self._selected_columns()
