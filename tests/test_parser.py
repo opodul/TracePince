@@ -68,6 +68,17 @@ class ProtocolParserTests(unittest.TestCase):
         self.assertIsNotNone(measurement)
         self.assertEqual(measurement.current, 2.08)
 
+    def test_mode_is_inferred_when_connected_mid_session(self):
+        text = "ELAPSED TIME: 12:37\nDC (A) = - 2.08\nPeak+ (A) = - 1.89\n"
+        measurement = parse_text(text)[0]
+        self.assertEqual(measurement.mode, "CURRENT_DC")
+        self.assertEqual(measurement.elapsed_time, "12:37")
+
+    def test_acdc_mode_is_inferred_without_header(self):
+        text = "ELAPSED TIME: 03:14\nRMS (A) = 2.10\nDC (A) = - 2.12\n"
+        measurement = parse_text(text)[0]
+        self.assertEqual(measurement.mode, "CURRENT_ACDC")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -79,14 +79,29 @@ class ProtocolParser:
         self._current_lines = []
         self._last_complete_line_at = None
         values = self._parse_values(raw_block)
+        mode = self._mode
+        if mode == "UNKNOWN":
+            mode = self._infer_mode(values)
         return Measurement(
             timestamp=datetime.now(),
             elapsed_time=elapsed_time,
-            mode=self._mode,
+            mode=mode,
             raw_block=raw_block,
             values=values,
             **self._known_values(values),
         )
+
+    @staticmethod
+    def _infer_mode(values: Dict[str, float]) -> str:
+        if "P (W)" in values and "A (A)" in values and "V (V)" in values:
+            return "POWER_1PH_DC"
+        if "RMS (V)" in values:
+            return "VOLTAGE_ACDC"
+        if "RMS (A)" in values:
+            return "CURRENT_ACDC"
+        if "DC (A)" in values:
+            return "CURRENT_DC"
+        return "UNKNOWN"
 
     @staticmethod
     def _normalize_mode(measurement_type: str, coupling: str) -> str:

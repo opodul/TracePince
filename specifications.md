@@ -516,6 +516,13 @@ Après réception d'une ligne complète, si aucune nouvelle ligne n'arrive
 pendant 500 ms, le bloc courant est finalisé automatiquement. L'interface
 n'attend donc pas le début du bloc suivant pour afficher la mesure précédente.
 
+Si l'acquisition commence au milieu d'une session et que l'en-tête de mode
+n'a pas été reçu, le parser déduit le mode depuis les colonnes du bloc. Il
+reconnaît notamment `RMS (V)` comme `VOLTAGE_ACDC`, `RMS (A)` comme
+`CURRENT_ACDC`, `DC (A)` comme `CURRENT_DC` et l'ensemble `P (W)`, `A (A)`,
+`V (V)` comme `POWER_1PH_DC`. La valeur `elapsed_time` est acceptée quelle
+que soit sa valeur de départ.
+
 ## 18. Données brutes et données parsées
 
 Il est essentiel de conserver deux niveaux de données.
