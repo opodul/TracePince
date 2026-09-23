@@ -1,5 +1,6 @@
 {
   "python.defaultInterpreterPath": "${env:HOME}/.venvs/tracepince/bin/python",
+  "python.terminal.activateEnvironment": true,
   "terminal.integrated.profiles.linux": {
     "TracePince Toolbox": {
       "path": "toolbox",
