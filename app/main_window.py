@@ -1,5 +1,6 @@
 import csv
 import queue
+import threading
 import tkinter as tk
 import webbrowser
 from datetime import datetime
@@ -81,6 +82,7 @@ class MainWindow:
         ttk.Button(console_controls, text="Clear table", command=self.clear_table).pack(side="right", padx=8)
         ttk.Button(console_controls, text="Export CSV", command=self.export_csv).pack(side="right", padx=8)
         ttk.Button(console_controls, text="Export graph PDF", command=self.export_graph).pack(side="right", padx=8)
+        ttk.Button(console_controls, text="Save Log", command=self.save_log).pack(side="right", padx=8)
         ttk.Button(console_controls, text="Clear console", command=lambda: self.console.delete("1.0", "end")).pack(side="right")
         ttk.Button(console_controls, text="Inject log", command=self.inject_log).pack(side="right", padx=8)
         self.console = tk.Text(log_frame, height=5, wrap="none", state="disabled")
@@ -183,6 +185,36 @@ class MainWindow:
         except OSError as error:
             messagebox.showerror("CSV export error", str(error))
 
+    def save_log(self) -> None:
+        if self.logger.path is None:
+            messagebox.showinfo("Save log", "No active log file to save.")
+            return
+
+        default_name = self.logger.path.stem if self.logger.path.suffix else "session"
+        target = filedialog.asksaveasfilename(
+            title="Save log as",
+            initialdir=str(self.logger.directory),
+            initialfile=f"{default_name}_copy.log",
+            defaultextension=".log",
+            filetypes=(("Log files", "*.log"), ("All files", "*.*")),
+        )
+        if not target:
+            return
+
+        source_path = self.logger.path
+        if Path(target).resolve() == source_path.resolve():
+            messagebox.showwarning("Save log", "Choose a different destination than the active log file.")
+            return
+
+        def copy_in_background() -> None:
+            try:
+                self.logger.copy_current(Path(target))
+                self.root.after(0, lambda: self.status.configure(text=f"Log saved - {Path(target).name}"))
+            except Exception as error:
+                self.root.after(0, lambda: messagebox.showerror("Save log error", str(error)))
+
+        threading.Thread(target=copy_in_background, daemon=True).start()
+
     def export_graph(self) -> None:
         path = filedialog.asksaveasfilename(
             title="Export graph as PDF",
@@ -236,8 +268,11 @@ class MainWindow:
         path = filedialog.askopenfilename(title="Inject log", filetypes=(("Log files", "*.log *.txt"), ("All files", "*.*")))
         if not path:
             return
+        source = Path(path)
         try:
-            text = Path(path).read_text(encoding="ascii", errors="replace")
+            text = source.read_text(encoding="ascii", errors="replace")
+            self.logger.path = source
+            self.logger._file = None
             self.parser = ProtocolParser()
             self._append_console(text)
             for measurement in self.parser.feed(text):
@@ -245,7 +280,7 @@ class MainWindow:
             final = self.parser.flush()
             if final is not None:
                 self._show_measurement(final)
-            self.status.configure(text=f"Injected - {Path(path).name}")
+            self.status.configure(text=f"Injected - {source.name}")
         except OSError as error:
             messagebox.showerror("Injection error", str(error))
 

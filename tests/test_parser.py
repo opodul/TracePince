@@ -1,8 +1,10 @@
+import tempfile
 import unittest
 from unittest.mock import patch
 from pathlib import Path
 
 from app.protocol_parser import ProtocolParser, parse_text
+from app.serial_logger import SerialLogger
 
 
 class ProtocolParserTests(unittest.TestCase):
@@ -78,6 +80,33 @@ class ProtocolParserTests(unittest.TestCase):
         text = "ELAPSED TIME: 03:14\nRMS (A) = 2.10\nDC (A) = - 2.12\n"
         measurement = parse_text(text)[0]
         self.assertEqual(measurement.mode, "CURRENT_ACDC")
+
+    def test_copy_current_log_keeps_default_file_active(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            logger = SerialLogger(Path(tmpdir))
+            default_path = logger.start()
+            logger.write(b"hello")
+            copied_path = default_path.parent / "copy.log"
+
+            logger.copy_current(copied_path)
+
+            self.assertEqual(copied_path.read_bytes(), b"hello")
+            logger.write(b" world")
+            self.assertEqual(default_path.read_bytes(), b"hello world")
+            logger.close()
+
+    def test_copy_current_allows_injected_file_without_open_handle(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            logger = SerialLogger(Path(tmpdir))
+            source = Path(tmpdir) / "injected.log"
+            source.write_bytes(b"injected data")
+            logger.path = source
+            logger._file = None
+
+            copied = Path(tmpdir) / "copy_from_injected.log"
+            logger.copy_current(copied)
+
+            self.assertEqual(copied.read_bytes(), b"injected data")
 
 
 if __name__ == "__main__":
