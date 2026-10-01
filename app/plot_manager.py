@@ -15,6 +15,14 @@ class PlotManager:
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
         self.selected: list[str] = []
         self.axes = []
+        self.language = "en"
+
+    def set_language(self, language: str) -> None:
+        self.language = language
+        label = {"fr": "Index de mesure", "de": "Messindex"}.get(language, "Measurement index")
+        if self.axes:
+            self.axes[-1].set_xlabel(label)
+            self.canvas.draw_idle()
 
     def set_columns(self, columns: Sequence[str], selected: Sequence[str] | None = None) -> None:
         available = list(columns)
@@ -29,7 +37,7 @@ class PlotManager:
             axis.grid(True, alpha=0.25)
             self.axes.append(axis)
         if self.axes:
-            self.axes[-1].set_xlabel("Measurement index")
+            self.axes[-1].set_xlabel({"fr": "Index de mesure", "de": "Messindex"}.get(self.language, "Measurement index"))
         self.canvas.draw_idle()
 
     def update(self, measurements: Iterable[Measurement], selected: Sequence[str] | None = None) -> None:
@@ -53,7 +61,7 @@ class PlotManager:
                     markersize=5,
                 )
         if self.axes:
-            self.axes[-1].set_xlabel("Measurement index")
+            self.axes[-1].set_xlabel({"fr": "Index de mesure", "de": "Messindex"}.get(self.language, "Measurement index"))
         self.canvas.draw_idle()
 
     def save(self, path: str) -> None:

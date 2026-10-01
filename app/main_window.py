@@ -12,17 +12,22 @@ from .plot_manager import PlotManager
 from .protocol_parser import ProtocolParser
 from .serial_logger import SerialLogger
 from .serial_manager import SerialConfig, SerialManager
+from .translations import translate
 
 
 class MainWindow:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title("Chauvin Arnoux Serial Monitor")
+        self.language = "fr"
+        self.translatable_widgets = []
+        self.root.title(self._t("Chauvin Arnoux Serial Monitor"))
         self.root.geometry("1200x780")
         self.events = queue.Queue()
         self.parser = ProtocolParser()
         self.data = DataManager()
         self.mode = None
+        self.status_key = "Disconnected"
+        self.status_values = {}
         self.columns = []
         self.column_vars = {}
         self.logger = SerialLogger(Path("logs"))
@@ -35,14 +40,20 @@ class MainWindow:
     def _build(self) -> None:
         controls = ttk.Frame(self.root, padding=8)
         controls.pack(fill="x")
+        self._text_widget(ttk.Label(controls, text="Language"), "Language").grid(row=0, column=10, padx=(12, 3))
+        self.language_selector = ttk.Combobox(controls, values=("English", "Français", "Deutsch"), width=9, state="readonly")
+        self.language_selector.set("Français")
+        self.language_selector.grid(row=0, column=11, padx=3)
+        self.language_selector.bind("<<ComboboxSelected>>", self._change_language)
         self.port = ttk.Combobox(controls, width=18)
         self.port.grid(row=0, column=0, padx=3)
-        ttk.Button(controls, text="Refresh", command=self.refresh_ports).grid(row=0, column=1, padx=3)
+        self._text_widget(ttk.Button(controls, text="Refresh", command=self.refresh_ports), "Refresh").grid(row=0, column=1, padx=3)
         self.baud = ttk.Combobox(controls, values=("1200", "2400", "4800", "9600", "19200", "38400", "115200"), width=8)
         self.baud.set("19200")
         self.baud.grid(row=0, column=2, padx=3)
-        self.parity = ttk.Combobox(controls, values=("None", "Even", "Odd", "Mark", "Space"), width=8)
-        self.parity.set("None")
+        self.parity_keys = ("None", "Even", "Odd", "Mark", "Space")
+        self.parity = ttk.Combobox(controls, values=self._parity_labels(), width=8)
+        self.parity.set(self._t("None"))
         self.parity.grid(row=0, column=3, padx=3)
         self.bits = ttk.Combobox(controls, values=("5", "6", "7", "8"), width=4)
         self.bits.set("8")
@@ -52,9 +63,9 @@ class MainWindow:
         self.stopbits.grid(row=0, column=5, padx=3)
         self.rtscts = tk.BooleanVar(value=True)
         ttk.Checkbutton(controls, text="RTS/CTS", variable=self.rtscts).grid(row=0, column=6, padx=3)
-        ttk.Button(controls, text="Connect", command=self.connect).grid(row=0, column=7, padx=3)
-        ttk.Button(controls, text="Disconnect", command=self.disconnect).grid(row=0, column=8, padx=3)
-        self.status = ttk.Label(controls, text="Disconnected")
+        self._text_widget(ttk.Button(controls, text="Connect", command=self.connect), "Connect").grid(row=0, column=7, padx=3)
+        self._text_widget(ttk.Button(controls, text="Disconnect", command=self.disconnect), "Disconnect").grid(row=0, column=8, padx=3)
+        self.status = ttk.Label(controls, text=self._t("Disconnected"))
         self.status.grid(row=0, column=9, padx=12)
 
         body = ttk.PanedWindow(self.root, orient="vertical")
@@ -76,17 +87,51 @@ class MainWindow:
         self.column_controls = ttk.Frame(table_frame)
         self.column_controls.grid(row=1, column=0, columnspan=2, sticky="ew")
         self.plot = PlotManager(plot_frame)
+        self.plot.set_language(self.language)
 
         console_controls = ttk.Frame(log_frame)
         console_controls.pack(fill="x")
-        ttk.Button(console_controls, text="Clear table", command=self.clear_table).pack(side="right", padx=8)
-        ttk.Button(console_controls, text="Export CSV", command=self.export_csv).pack(side="right", padx=8)
-        ttk.Button(console_controls, text="Export graph PDF", command=self.export_graph).pack(side="right", padx=8)
-        ttk.Button(console_controls, text="Save Log", command=self.save_log).pack(side="right", padx=8)
-        ttk.Button(console_controls, text="Clear console", command=lambda: self.console.delete("1.0", "end")).pack(side="right")
-        ttk.Button(console_controls, text="Inject log", command=self.inject_log).pack(side="right", padx=8)
+        self._text_widget(ttk.Button(console_controls, text="Clear table", command=self.clear_table), "Clear table").pack(side="right", padx=8)
+        self._text_widget(ttk.Button(console_controls, text="Export CSV", command=self.export_csv), "Export CSV").pack(side="right", padx=8)
+        self._text_widget(ttk.Button(console_controls, text="Export graph for printing (PDF)", command=self.export_graph), "Export graph for printing (PDF)").pack(side="right", padx=8)
+        self._text_widget(ttk.Button(console_controls, text="Save Measurement", command=self.save_log), "Save Measurement").pack(side="right", padx=8)
+        self._text_widget(ttk.Button(console_controls, text="Clear console", command=lambda: self.console.delete("1.0", "end")), "Clear console").pack(side="right")
+        self._text_widget(ttk.Button(console_controls, text="Import measurement", command=self.inject_log), "Import measurement").pack(side="right", padx=8)
         self.console = tk.Text(log_frame, height=5, wrap="none", state="disabled")
         self.console.pack(fill="both", expand=True)
+
+    def _t(self, text: str) -> str:
+        return translate(text, self.language)
+
+    def _text_widget(self, widget, text: str):
+        widget.configure(text=self._t(text))
+        self.translatable_widgets.append((widget, text))
+        return widget
+
+    def _parity_labels(self):
+        return tuple(self._t(value) for value in self.parity_keys)
+
+    def _change_language(self, _event=None) -> None:
+        self.language = {"English": "en", "Français": "fr", "Deutsch": "de"}.get(self.language_selector.get(), "en")
+        for widget, text in self.translatable_widgets:
+            widget.configure(text=self._t(text))
+        self.root.title(self._t("Chauvin Arnoux Serial Monitor"))
+        parity_index = self.parity.current()
+        self.parity.configure(values=self._parity_labels())
+        self.parity.current(parity_index)
+        self._set_status(self.status_key, **self.status_values)
+        self._update_headings()
+        self.plot.set_language(self.language)
+
+    def _set_status(self, key: str, **values) -> None:
+        self.status_key = key
+        self.status_values = values
+        self.status.configure(text=self._t(key).format(**values))
+
+    def _update_headings(self) -> None:
+        headings = {"timestamp": "Timestamp", "mode": "Mode", "elapsed": "Elapsed"}
+        for column in self.table["columns"]:
+            self.table.heading(column, text=self._t(headings.get(column, column)))
 
     def refresh_ports(self) -> None:
         ports = self.serial.list_ports()
@@ -96,15 +141,16 @@ class MainWindow:
 
     def connect(self) -> None:
         try:
-            config = SerialConfig(self.port.get(), int(self.baud.get()), int(self.bits.get()), {"None": "N", "Even": "E", "Odd": "O", "Mark": "M", "Space": "S"}[self.parity.get()], float(self.stopbits.get()), self.rtscts.get())
+            parity = dict(zip(self._parity_labels(), ("N", "E", "O", "M", "S")))[self.parity.get()]
+            config = SerialConfig(self.port.get(), int(self.baud.get()), int(self.bits.get()), parity, float(self.stopbits.get()), self.rtscts.get())
             self.parser = ProtocolParser()
             self._reset_measurements(None)
             path = self.logger.start()
             self.serial.connect(config)
-            self.status.configure(text=f"Connected - {config.port} ({path.name})")
+            self._set_status("Connected - {port} ({log})", port=config.port, log=path.name)
         except Exception as error:
             self.logger.close()
-            messagebox.showerror("Connection error", str(error))
+            messagebox.showerror(self._t("Connection error"), str(error))
 
     def disconnect(self) -> None:
         self.serial.disconnect()
@@ -112,7 +158,7 @@ class MainWindow:
         if final is not None:
             self._show_measurement(final)
         self.logger.close()
-        self.status.configure(text="Disconnected")
+        self._set_status("Disconnected")
 
     def _received(self, data: bytes) -> None:
         self.logger.write(data)
@@ -131,7 +177,7 @@ class MainWindow:
                     for measurement in self.parser.feed(text):
                         self._show_measurement(measurement)
                 else:
-                    self.status.configure(text=f"Communication error: {payload}")
+                    self._set_status("Communication error: {error}", error=payload)
                     self.disconnect()
         except queue.Empty:
             pass
@@ -167,9 +213,9 @@ class MainWindow:
 
     def export_csv(self) -> None:
         path = filedialog.asksaveasfilename(
-            title="Export table as CSV",
+            title=self._t("Export table as CSV"),
             defaultextension=".csv",
-            filetypes=(("CSV files", "*.csv"), ("All files", "*.*")),
+            filetypes=((self._t("CSV files"), "*.csv"), (self._t("All files"), "*.*")),
         )
         if not path:
             return
@@ -181,45 +227,45 @@ class MainWindow:
                 for item in self.data.measurements:
                     row = (item.timestamp.isoformat(timespec="milliseconds"), item.mode, item.elapsed_time)
                     writer.writerow(row + tuple(item.values.get(name, "") for name in self.columns))
-            self.status.configure(text=f"CSV exported - {Path(path).name}")
+            self._set_status("CSV exported - {name}", name=Path(path).name)
         except OSError as error:
-            messagebox.showerror("CSV export error", str(error))
+            messagebox.showerror(self._t("CSV export error"), str(error))
 
     def save_log(self) -> None:
         if self.logger.path is None:
-            messagebox.showinfo("Save log", "No active log file to save.")
+            messagebox.showinfo(self._t("Save Measurement"), self._t("No active measurement file to save."))
             return
 
         default_name = self.logger.path.stem if self.logger.path.suffix else "session"
         target = filedialog.asksaveasfilename(
-            title="Save log as",
+            title=self._t("Save measurement as"),
             initialdir=str(self.logger.directory),
             initialfile=f"{default_name}_copy.log",
             defaultextension=".log",
-            filetypes=(("Log files", "*.log"), ("All files", "*.*")),
+            filetypes=((self._t("Measurement files"), "*.log"), (self._t("All files"), "*.*")),
         )
         if not target:
             return
 
         source_path = self.logger.path
         if Path(target).resolve() == source_path.resolve():
-            messagebox.showwarning("Save log", "Choose a different destination than the active log file.")
+            messagebox.showwarning(self._t("Save Measurement"), self._t("Choose a different destination than the active measurement file."))
             return
 
         def copy_in_background() -> None:
             try:
                 self.logger.copy_current(Path(target))
-                self.root.after(0, lambda: self.status.configure(text=f"Log saved - {Path(target).name}"))
+                self.root.after(0, lambda: self._set_status("Measurement saved - {name}", name=Path(target).name))
             except Exception as error:
-                self.root.after(0, lambda: messagebox.showerror("Save log error", str(error)))
+                self.root.after(0, lambda: messagebox.showerror(self._t("Save measurement error"), str(error)))
 
         threading.Thread(target=copy_in_background, daemon=True).start()
 
     def export_graph(self) -> None:
         path = filedialog.asksaveasfilename(
-            title="Export graph as PDF",
+            title=self._t("Export graph as PDF"),
             defaultextension=".pdf",
-            filetypes=(("PDF files", "*.pdf"), ("PNG files", "*.png"), ("All files", "*.*")),
+            filetypes=((self._t("PDF files"), "*.pdf"), (self._t("PNG files"), "*.png"), (self._t("All files"), "*.*")),
         )
         if not path:
             return
@@ -228,17 +274,16 @@ class MainWindow:
             self.plot.save(path)
             if Path(path).suffix.lower() == ".pdf":
                 webbrowser.open(Path(path).resolve().as_uri())
-            self.status.configure(text=f"Graph exported - {Path(path).name}")
+            self._set_status("Graph exported - {name}", name=Path(path).name)
         except OSError as error:
-            messagebox.showerror("Graph export error", str(error))
+            messagebox.showerror(self._t("Graph export error"), str(error))
 
     def _configure_columns(self) -> None:
         old_selection = self._selected_columns()
         table_columns = ("timestamp", "mode", "elapsed", *self.columns)
         self.table.configure(columns=table_columns)
-        headings = {"timestamp": "Timestamp", "mode": "Mode", "elapsed": "Elapsed"}
         for column in table_columns:
-            self.table.heading(column, text=headings.get(column, column))
+            self.table.heading(column, text=self._t({"timestamp": "Timestamp", "mode": "Mode", "elapsed": "Elapsed"}.get(column, column)))
             self.table.column(column, width=115, anchor="center")
         for child in self.column_controls.winfo_children():
             child.destroy()
@@ -265,7 +310,7 @@ class MainWindow:
         self.plot.update(self.data.measurements, selected)
 
     def inject_log(self) -> None:
-        path = filedialog.askopenfilename(title="Inject log", filetypes=(("Log files", "*.log *.txt"), ("All files", "*.*")))
+        path = filedialog.askopenfilename(title=self._t("Import measurement"), filetypes=((self._t("Measurement files"), "*.log *.txt"), (self._t("All files"), "*.*")))
         if not path:
             return
         source = Path(path)
@@ -280,9 +325,9 @@ class MainWindow:
             final = self.parser.flush()
             if final is not None:
                 self._show_measurement(final)
-            self.status.configure(text=f"Injected - {source.name}")
+            self._set_status("Measurement imported - {name}", name=source.name)
         except OSError as error:
-            messagebox.showerror("Injection error", str(error))
+            messagebox.showerror(self._t("Measurement import error"), str(error))
 
     def _append_console(self, text: str) -> None:
         stamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]

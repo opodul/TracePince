@@ -28,10 +28,10 @@ class SerialLogger:
 
     def copy_current(self, destination: Path) -> Path:
         if self.path is None:
-            raise FileNotFoundError("No active log file to save.")
+            raise FileNotFoundError("No active measurement file to save.")
         destination = Path(destination)
         if destination.resolve() == self.path.resolve():
-            raise ValueError("Destination must be different from the active log file.")
+            raise ValueError("Destination must be different from the active measurement file.")
         if self._file is not None:
             self._file.flush()
         destination.parent.mkdir(parents=True, exist_ok=True)
