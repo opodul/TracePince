@@ -85,15 +85,45 @@ class ProtocolParserTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             logger = SerialLogger(Path(tmpdir))
             default_path = logger.start()
-            logger.write(b"hello")
+            initial_data = b"ELAPSED TIME: 00:08\nfirst block\nELAPSED TIME: 00:09\nsecond block\n"
+            logger.write(initial_data)
             copied_path = default_path.parent / "copy.log"
 
             logger.copy_current(copied_path)
 
-            self.assertEqual(copied_path.read_bytes(), b"hello")
+            self.assertEqual(copied_path.read_bytes(), initial_data)
             logger.write(b" world")
-            self.assertEqual(default_path.read_bytes(), b"hello world")
+            self.assertEqual(default_path.read_bytes(), initial_data + b" world")
             logger.close()
+
+    def test_single_measurement_does_not_create_log_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            logger = SerialLogger(Path(tmpdir))
+            path = logger.start()
+
+            logger.write(b"ELAPSED TIME: 00:08\nRMS (V) = 1.43\nDC (V) = 1.43\n")
+            logger.close()
+
+            self.assertFalse(path.exists())
+            self.assertEqual(list(Path(tmpdir).glob("serial_*.log")), [])
+
+    def test_multiblock_log_is_created_after_second_measurement_and_preserves_bytes(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            logger = SerialLogger(Path(tmpdir))
+            path = logger.start()
+            first_block = b"ELAPSED TIME: 00:08\r\nRMS (V) = 1.43\r\n"
+            second_block = b"  ELAPSED TIME: 00:09\r\nRMS (V) = 1.44\r\n"
+
+            logger.write(first_block)
+            self.assertFalse(path.exists())
+            logger.write(second_block[:14])
+            self.assertFalse(path.exists())
+            logger.write(second_block[14:])
+            self.assertTrue(path.exists())
+            logger.write(b"ELAPSED TIME: 00:10\r\nRMS (V) = 1.45\r\n")
+            logger.close()
+
+            self.assertEqual(path.read_bytes(), first_block + second_block + b"ELAPSED TIME: 00:10\r\nRMS (V) = 1.45\r\n")
 
     def test_copy_current_allows_injected_file_without_open_handle(self):
         with tempfile.TemporaryDirectory() as tmpdir:

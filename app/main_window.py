@@ -232,7 +232,7 @@ class MainWindow:
             messagebox.showerror(self._t("CSV export error"), str(error))
 
     def save_log(self) -> None:
-        if self.logger.path is None:
+        if self.logger.path is None or not self.logger.path.is_file():
             messagebox.showinfo(self._t("Save Measurement"), self._t("No active measurement file to save."))
             return
 
